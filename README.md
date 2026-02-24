@@ -25,7 +25,7 @@ To detect change, the model must "see" the before and after states simultaneousl
 * **Benefit:** This allows the model's initial attention layers to learn temporal correlations directly from the raw spectral data.
 
 ### 3. CNN Decoder (The "Refiner")
-While the ViT is excellent at understanding *what* changed, it processes images in 16x16 pixel "patches." We engineered a custom **CNN Decoder** to upsample these features, recovering sharp boundaries for precise pixel-level flood mapping.
+While the ViT is excellent at understanding *what* changed, it processes images in 16x16 pixel "patches." We engineered a custom **CNN Decoder** to upsample these features, recovering sharp boundaries for precise pixel-level disaster mapping.
 
 ### 4. Transfer Learning Strategy
 * **Backbone:** Frozen EuroSAT weights to maintain foundational geospatial knowledge.
@@ -39,8 +39,7 @@ While the ViT is excellent at understanding *what* changed, it processes images 
 | **Deep Learning** | PyTorch, `timm` (PyTorch Image Models) |
 | **Satellite Data** | Google Earth Engine (GEE) API, Sentinel-2 (MSI) |
 | **Backend** | Flask (Python), Gunicorn |
-| **Frontend** | Leaflet.js, JavaScript (ES6), HTML5/CSS3 |
-| **Deployment** | AWS EC2 / Render |
+| **Frontend** | Leaflet.js, JavaScript , HTML5/CSS3 |
 
 ---
 
