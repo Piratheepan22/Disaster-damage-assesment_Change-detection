@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Annotator Pro</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fabric.js for Canvas manipulation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        /* Custom scrollbar for sidebar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #262626; }
+        ::-webkit-scrollbar-thumb { background: #404040; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #525252; }
+        
+        /* Checkboard pattern for transparent background */
+        .canvas-bg {
+            background-image: linear-gradient(45deg, #262626 25%, transparent 25%), 
+                              linear-gradient(-45deg, #262626 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #262626 75%), 
+                              linear-gradient(-45deg, transparent 75%, #262626 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        .tool-btn.active {
+            background-color: #2563eb; /* blue-600 */
+            color: white;
+            border-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-neutral-900 text-white h-screen flex flex-col overflow-hidden selection:bg-blue-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="border-b border-neutral-700 bg-neutral-800 px-6 py-4 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-2 rounded-lg">
+                <i class="ph ph-stack text-2xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">Image Annotator</h1>
+                <p class="text-xs text-neutral-400">High Res Mode</p>
+            </div>
+        </div>
+        <button onclick="downloadCanvas()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+            <i class="ph ph-download-simple text-lg"></i>
+            Export Mask
+        </button>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="flex flex-1 overflow-hidden">
+        
+        <!-- Left Sidebar: Controls -->
+        <div class="w-full max-w-xs bg-neutral-800 border-r border-neutral-700 p-5 flex flex-col gap-6 overflow-y-auto shrink-0 z-10 shadow-xl">
+            
+            <!-- Step 1: Uploads -->
+            <section class="border-b border-neutral-700 pb-6">
+                <h2 class="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="ph ph-upload-simple"></i> 1. Load Imagery
+                </h2>
+                <div class="space-y-3">
+                    <!-- Base Image Input -->
+                    <div class="relative group">
+                        <input type="file" id="baseInput" accept="image/*" onchange="handleImageUpload(event, 'base')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                        <div id="baseDropzone" class="border-2 border-dashed border-neutral-600 hover:border-neutral-500 hover:bg-neutral-700 rounded-lg p-3 flex items-center gap-3 transition-colors">
+                            <div id="baseIcon" class="p-2 rounded-md bg-neutral-700 text-neutral-400 transition-colors">
+                                <i class="ph ph-image text-lg"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p id="baseText" class="text-xs font-medium truncate">Upload Base Image (Before)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Overlay Image Input -->
+                    <div class="relative group">
+                        <input type="file" id="overlayInput" accept="image/*" onchange="handleImageUpload(event, 'overlay')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                        <div id="overlayDropzone" class="border-2 border-dashed border-neutral-600 hover:border-neutral-500 hover:bg-neutral-700 rounded-lg p-3 flex items-center gap-3 transition-colors">
+                            <div id="overlayIcon" class="p-2 rounded-md bg-neutral-700 text-neutral-400 transition-colors">
+                                <i class="ph ph-stack-simple text-lg"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p id="overlayText" class="text-xs font-medium truncate">Upload Overlay Image (On)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 2: Alignment Controls -->
+            <section id="alignSection" class="border-b border-neutral-700 pb-6 opacity-50 pointer-events-none transition-opacity">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xs font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="ph ph-arrows-out-cardinal"></i> 2. Alignment
+                    </h2>
+                    <span id="alignBadge" class="hidden text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/30">Active</span>
+                </div>
+
+                <button id="btnAlign" onclick="setMode('align')" class="w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all bg-neutral-700 text-neutral-300 hover:bg-neutral-600 mb-4">
+                    <i class="ph ph-arrow-counter-clockwise"></i> Adjust Images
+                </button>
+                
+
+                <!-- Sliders -->
+                <div class="space-y-4 px-1">
+                    <!-- Opacity -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-medium text-neutral-400">Opacity</label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] text-neutral-500 uppercase tracking-wider">Toggle Opacity</span>
+                                <!-- Toggle Switch -->
+                                <button id="opacityToggleBtn" onclick="toggleOpacity()" class="w-8 h-4 bg-blue-600 rounded-full relative transition-colors focus:outline-none shadow-inner" title="Toggle Visibility">
+                                    <div id="opacityToggleKnob" class="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform shadow-sm translate-x-4"></div>
+                                </button>
+                            </div>
+                        </div>
+                        <br>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="0.5" oninput="updateOpacity(this.value)" class="flex-1 h-1 bg-neutral-700 rounded-lg appearance-none cursor-pointer slider-thumb">
+                            <span id="opacityValue" class="text-xs text-neutral-500 w-8 text-right">50%</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Rotation -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-medium text-neutral-400">Rotation</label>
+                            <span id="rotationValue" class="text-xs text-neutral-500">0.0°</span>
+                        </div>
+                        <input type="range" min="-180" max="180" step="0.1" value="0" oninput="updateRotation(this.value)" class="w-full h-1 bg-neutral-700 rounded-lg appearance-none cursor-pointer slider-thumb">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 3: Annotation Controls -->
+            <section id="annotateSection" class="opacity-50 pointer-events-none transition-opacity">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xs font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="ph ph-pencil-simple"></i> 3. Annotation
+                    </h2>
+                    <span id="annotateBadge" class="hidden text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/30">Active</span>
+                </div>
+
+                <!-- Main Annotation Toggle -->
+                <button id="btnAnnotate" onclick="setMode('annotate')" class="w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all bg-neutral-700 text-neutral-300 hover:bg-neutral-600 mb-4">
+                    <i class="ph ph-pencil-simple"></i> Enable Markup
+                </button>
+
+                <div id="annotationTools" class="hidden space-y-4">
+                    
+                    <!-- Tool Selection -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setAnnotateTool('poly')" id="tool-poly" class="tool-btn active flex items-center justify-center gap-2 p-2 rounded bg-neutral-700 hover:bg-neutral-600 border border-neutral-600" title="Polygon (Click points, Dbl Click to finish)">
+                            <i class="ph ph-polygon text-lg"></i>
+                            <span class="text-xs">Polygon</span>
+                        </button>
+                        <button onclick="setAnnotateTool('pan')" id="tool-pan" class="tool-btn flex items-center justify-center gap-2 p-2 rounded bg-neutral-700 hover:bg-neutral-600 border border-neutral-600" title="Pan (Drag to move)">
+                            <i class="ph ph-hand-grabbing text-lg"></i>
+                            <span class="text-xs">Pan</span>
+                        </button>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="text-xs text-neutral-400 space-y-1 mt-2">
+                        <p class="flex items-center gap-2">
+                            <span class="w-3 h-3 bg-black border border-white/20 rounded-sm inline-block"></span>
+                            <span>Color: Black</span>
+                        </p>
+                        <!-- <p class="flex items-center gap-2">
+                            <i class="ph ph-ruler"></i>
+                            <span>Size: 1px (Image Scale)</span>
+                        </p> -->
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="space-y-2 pt-2 border-t border-neutral-700">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="undoAction()" class="py-2 px-3 flex items-center justify-center gap-2 text-xs bg-neutral-700 hover:bg-neutral-600 rounded text-neutral-300" title="Undo (Ctrl+Z)">
+                                <i class="ph ph-arrow-u-up-left"></i> Undo
+                            </button>
+                            <button onclick="redoAction()" class="py-2 px-3 flex items-center justify-center gap-2 text-xs bg-neutral-700 hover:bg-neutral-600 rounded text-neutral-300" title="Redo (Ctrl+R)">
+                                <i class="ph ph-arrow-u-up-right"></i> Redo
+                            </button>
+                        </div>
+                        <button onclick="clearAnnotations()" class="w-full py-2 px-3 flex items-center justify-center gap-2 text-xs text-red-400 hover:text-red-300 bg-red-900/10 hover:bg-red-900/20 border border-red-900/30 rounded transition-colors">
+                            <i class="ph ph-trash"></i> Clear All
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right Canvas Area -->
+        <div class="flex-1 bg-neutral-950/50 flex flex-col p-0 overflow-hidden relative">
+            <div class="flex-1 w-full h-full relative" id="canvasScrollArea">
+                <canvas id="c" class="w-full h-full"></canvas>
+                
+                <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-neutral-400 pointer-events-none bg-neutral-900 z-10">
+                    <div class="bg-neutral-800 p-6 rounded-full mb-4">
+                        <i class="ph ph-image text-5xl opacity-50"></i>
+                    </div>
+                    <p class="text-lg font-medium">No images loaded</p>
+                    <p class="text-sm">Upload Base Image to start</p>
+                </div>
+                
+                <!-- Zoom Controls Floating -->
+                <div class="absolute bottom-8 right-8 flex flex-col gap-2 z-20">
+                    <button onclick="fitToScreen()" class="p-2 bg-neutral-800 border border-neutral-600 rounded hover:bg-neutral-700 text-white shadow-lg" title="Fit to Screen">
+                        <i class="ph ph-arrows-out"></i>
+                    </button>
+                    <button onclick="zoomCanvas(1.1)" class="p-2 bg-neutral-800 border border-neutral-600 rounded hover:bg-neutral-700 text-white shadow-lg" title="Zoom In">
+                        <i class="ph ph-plus"></i>
+                    </button>
+                    <button onclick="zoomCanvas(0.9)" class="p-2 bg-neutral-800 border border-neutral-600 rounded hover:bg-neutral-700 text-white shadow-lg" title="Zoom Out">
+                        <i class="ph ph-minus"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="tooltip" class="hidden absolute bottom-6 left-1/2 -translate-x-1/2 bg-neutral-800/90 backdrop-blur border border-neutral-700 text-neutral-300 px-4 py-2 rounded-full text-xs shadow-lg pointer-events-none z-20">
+                Use Mouse Wheel to Zoom. Use Pan Tool to move.
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let canvas;
+        let baseImage = null;
+        let overlayImage = null;
+        let baseFileName = ''; 
+        let baseImgWidth = 0;
+        let baseImgHeight = 0;
+        let currentMode = 'align';
+        let currentTool = 'poly'; 
+        let brushColor = '#000000'; 
+        let brushSize = 1;
+        
+        // Dragging State
+        let isDragging = false;
+        let lastPosX = 0;
+        let lastPosY = 0;
+        
+        // State for Polygon Drawing
+        let polyPoints = [];
+        let polyLines = [];
+        let polyActiveLine = null;
+
+        // Undo/Redo Unified Stack
+        let globalRedoStack = [];
+
+        window.onload = function() {
+            const container = document.getElementById('canvasScrollArea');
+            canvas = new fabric.Canvas('c', {
+                width: container.clientWidth,
+                height: container.clientHeight,
+                backgroundColor: '#1a1a1a', // Dark background for the workspace
+                selection: false,
+                preserveObjectStacking: true
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                canvas.setDimensions({
+                    width: container.clientWidth,
+                    height: container.clientHeight
+                });
+                canvas.renderAll();
+            });
+            
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            canvas.freeDrawingBrush.width = brushSize;
+            canvas.freeDrawingBrush.color = brushColor;
+
+            // Zoom via Mouse Wheel
+            canvas.on('mouse:wheel', function(opt) {
+                var delta = opt.e.deltaY;
+                var zoom = canvas.getZoom();
+                zoom *= 0.999 ** delta;
+                if (zoom > 20) zoom = 20;
+                if (zoom < 0.01) zoom = 0.01;
+                canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+                opt.e.preventDefault();
+                opt.e.stopPropagation();
+            });
+
+            // Mouse Events for Pan & Poly
+            canvas.on('mouse:down', function(options) {
+                var evt = options.e;
+                if (currentTool === 'pan') {
+                    isDragging = true;
+                    lastPosX = evt.clientX;
+                    lastPosY = evt.clientY;
+                    canvas.defaultCursor = 'grabbing';
+                    canvas.setCursor('grabbing');
+                } else if (currentMode === 'annotate' && currentTool === 'poly') {
+                    const pointer = canvas.getPointer(options.e);
+                    _addPoint(pointer.x, pointer.y);
+                    // Clear redo stack on new input to maintain history consistency
+                    globalRedoStack = [];
+                }
+            });
+
+            canvas.on('mouse:move', function(options) {
+                if (isDragging) {
+                    var e = options.e;
+                    var vpt = canvas.viewportTransform;
+                    vpt[4] += e.clientX - lastPosX;
+                    vpt[5] += e.clientY - lastPosY;
+                    canvas.requestRenderAll();
+                    lastPosX = e.clientX;
+                    lastPosY = e.clientY;
+                } else if (currentMode === 'annotate' && currentTool === 'poly' && polyActiveLine && polyPoints.length > 0) {
+                    const pointer = canvas.getPointer(options.e);
+                    polyActiveLine.set({ x2: pointer.x, y2: pointer.y });
+                    canvas.renderAll();
+                }
+            });
+
+            canvas.on('mouse:up', function(options) {
+                if (currentTool === 'pan') {
+                    isDragging = false;
+                    canvas.defaultCursor = 'default';
+                    canvas.setCursor('default');
+                    canvas.setViewportTransform(canvas.viewportTransform); // Fix coords
+                }
+            });
+
+            canvas.on('mouse:dblclick', function(options) {
+                if (currentMode === 'annotate' && currentTool === 'poly') {
+                    finishPolygon();
+                }
+            });
+
+            // Keyboard shortcut for Undo (Ctrl+Z) and Redo (Ctrl+R)
+            document.addEventListener('keydown', function(e) {
+                // Check for Undo
+                if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                    e.preventDefault();
+                    undoAction();
+                }
+                // Check for Redo (Ctrl+R)
+                if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                    e.preventDefault(); // Prevent Browser Reload
+                    redoAction();
+                }
+            });
+        };
+
+        // --- ZOOM CONTROLS ---
+        function zoomCanvas(factor) {
+            let zoom = canvas.getZoom();
+            zoom *= factor;
+            if (zoom > 20) zoom = 20;
+            if (zoom < 0.01) zoom = 0.01;
+            canvas.zoomToPoint({ x: canvas.width / 2, y: canvas.height / 2 }, zoom);
+        }
+
+        function fitToScreen() {
+            if (!baseImgWidth || !baseImgHeight) return;
+            
+            const scaleX = canvas.width / baseImgWidth;
+            const scaleY = canvas.height / baseImgHeight;
+            const scale = Math.min(scaleX, scaleY) * 0.9; // 90% fit
+            
+            const center = canvas.getCenter();
+            
+            canvas.setViewportTransform([scale, 0, 0, scale, 
+                center.left - (baseImgWidth * scale) / 2, 
+                center.top - (baseImgHeight * scale) / 2
+            ]);
+        }
+
+        // --- POLYGON LOGIC ---
+        // Helper to add a point programmatically
+        function _addPoint(x, y) {
+            const points = [x, y, x, y];
+            
+            const line = new fabric.Line(points, {
+                strokeWidth: 1, 
+                stroke: '#000000',
+                fill: '#000000',
+                class: 'line',
+                originX: 'center',
+                originY: 'center',
+                selectable: false,
+                evented: false
+            });
+            
+            polyPoints.push({ x: x, y: y });
+            polyLines.push(line);
+            canvas.add(line);
+            polyActiveLine = line;
+        }
+
+        // Old function replaced by logic in mousedown + _addPoint
+        function addPolygonPoint(options) {
+            // Placeholder if called directly, but now handled via _addPoint
+        }
+
+        function finishPolygon() {
+            polyLines.forEach(line => canvas.remove(line));
+            polyLines = [];
+            polyActiveLine = null;
+
+            if (polyPoints.length > 2) {
+                const polygon = new fabric.Polygon(polyPoints, {
+                    stroke: '#000000',
+                    strokeWidth: 1, 
+                    fill: 'rgba(0, 0, 0, 0.5)', 
+                    objectCaching: false,
+                    selectable: false, 
+                    evented: false     
+                });
+                canvas.add(polygon);
+            }
+            
+            // Reset
+            polyPoints = [];
+            globalRedoStack = []; // Clear redo stack on finish shape
+        }
+
+        // --- UNDO/REDO ACTIONS ---
+        function undoAction() {
+            if (polyPoints.length > 0) {
+                undoLastPoint();
+            } else {
+                undoLastAnnotation();
+            }
+        }
+
+        function redoAction() {
+            if (globalRedoStack.length > 0) {
+                const action = globalRedoStack.pop();
+                if (action.type === 'point') {
+                    // Update the PREVIOUS line to connect to this point (visual fix)
+                    if (polyActiveLine) {
+                        polyActiveLine.set({ x2: action.x, y2: action.y });
+                    }
+                    _addPoint(action.x, action.y);
+                    canvas.renderAll();
+                } else if (action.type === 'shape') {
+                    canvas.add(action.object);
+                    canvas.renderAll();
+                }
+            }
+        }
+
+        function undoLastPoint() {
+            if (polyPoints.length > 0) {
+                const point = polyPoints.pop();
+                const lineToRemove = polyLines.pop();
+                if (lineToRemove) {
+                    canvas.remove(lineToRemove);
+                }
+
+                // Restore active line to previous point
+                if (polyLines.length > 0) {
+                    polyActiveLine = polyLines[polyLines.length - 1];
+                } else {
+                    polyActiveLine = null;
+                }
+                
+                // Push to global stack
+                globalRedoStack.push({ type: 'point', x: point.x, y: point.y });
+                
+                canvas.renderAll();
+            }
+        }
+
+        function undoLastAnnotation() {
+            const objects = canvas.getObjects();
+            // Iterate backwards to find last non-image object
+            for (let i = objects.length - 1; i >= 0; i--) {
+                const obj = objects[i];
+                if (obj.id !== 'base_img' && obj.id !== 'overlay_img') {
+                    canvas.remove(obj);
+                    globalRedoStack.push({ type: 'shape', object: obj });
+                    return; // Only undo one
+                }
+            }
+        }
+
+        function clearAnnotations() {
+            const objects = canvas.getObjects();
+            objects.forEach(obj => {
+                if (obj.id !== 'base_img' && obj.id !== 'overlay_img') {
+                    canvas.remove(obj);
+                }
+            });
+            globalRedoStack = []; // Clear redo stack on clear all
+        }
+
+        // --- IMAGE HANDLING ---
+        function handleImageUpload(e, type) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            clearAnnotations();
+
+            if (type === 'base') {
+                baseFileName = file.name;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(f) {
+                const data = f.target.result;
+                
+                fabric.Image.fromURL(data, function(img) {
+                    if (type === 'base') {
+                        baseImgWidth = img.width;
+                        baseImgHeight = img.height;
+                        
+                        img.set({
+                            left: 0,
+                            top: 0,
+                            originX: 'left',
+                            originY: 'top',
+                            selectable: false,
+                            evented: false,
+                            id: 'base_img'
+                        });
+                        
+                        const oldBase = canvas.getObjects().find(o => o.id === 'base_img');
+                        if (oldBase) canvas.remove(oldBase);
+                        
+                        canvas.add(img);
+                        canvas.sendToBack(img);
+                        baseImage = true;
+                        
+                        updateUploadUI('base', true);
+                        document.getElementById('emptyState').style.display = 'none';
+                        document.getElementById('annotateSection').classList.remove('opacity-50', 'pointer-events-none');
+                        
+                        const existingOverlay = canvas.getObjects().find(o => o.id === 'overlay_img');
+                        if (existingOverlay) {
+                            existingOverlay.set({ left: 0, top: 0 });
+                            existingOverlay.setCoords();
+                            existingOverlay.moveTo(1); 
+                        }
+                        fitToScreen(); 
+
+                    } else {
+                        img.set({
+                            left: 0,
+                            top: 0,
+                            originX: 'left',
+                            originY: 'top',
+                            opacity: 0.5,
+                            id: 'overlay_img',
+                            selectable: false,
+                            evented: false,
+                            hasControls: false,
+                            hasBorders: false,
+                            lockMovementX: true,
+                            lockMovementY: true,
+                            lockRotation: true,
+                            lockScalingX: true,
+                            lockScalingY: true
+                        });
+                        const oldOverlay = canvas.getObjects().find(o => o.id === 'overlay_img');
+                        if (oldOverlay) canvas.remove(oldOverlay);
+                        canvas.add(img);
+                        img.moveTo(1); 
+                        overlayImage = true;
+                        updateUploadUI('overlay', true);
+                        document.getElementById('alignSection').classList.remove('opacity-50', 'pointer-events-none');
+                        document.getElementById('tooltip').classList.remove('hidden');
+                        setMode('align');
+                    }
+                    canvas.requestRenderAll();
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            
+            const btnAlign = document.getElementById('btnAlign');
+            const btnAnnotate = document.getElementById('btnAnnotate');
+            const alignBadge = document.getElementById('alignBadge');
+            const annotateBadge = document.getElementById('annotateBadge');
+            const tools = document.getElementById('annotationTools');
+            const tip = document.getElementById('tooltip');
+
+            btnAlign.className = "w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all bg-neutral-700 text-neutral-300 hover:bg-neutral-600 mb-4";
+            btnAnnotate.className = "w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all bg-neutral-700 text-neutral-300 hover:bg-neutral-600 mb-4";
+            alignBadge.classList.add('hidden');
+            annotateBadge.classList.add('hidden');
+            tools.classList.add('hidden');
+
+            if (mode === 'align') {
+                canvas.isDrawingMode = false;
+                
+                const overlayObj = canvas.getObjects().find(o => o.id === 'overlay_img');
+                if (overlayObj) {
+                    overlayObj.selectable = false;
+                    overlayObj.evented = false;
+                }
+                
+                canvas.forEachObject(obj => {
+                    if (obj.id !== 'overlay_img' && obj.id !== 'base_img') {
+                        obj.selectable = false;
+                        obj.evented = false;
+                    }
+                });
+
+                btnAlign.classList.remove('bg-neutral-700', 'text-neutral-300');
+                btnAlign.classList.add('bg-blue-600', 'text-white');
+                alignBadge.classList.remove('hidden');
+                tip.textContent = "Use Rotation slider to align.";
+            } else {
+                setAnnotateTool('poly');
+                btnAnnotate.classList.remove('bg-neutral-700', 'text-neutral-300');
+                btnAnnotate.classList.add('bg-green-600', 'text-white');
+                annotateBadge.classList.remove('hidden');
+                tools.classList.remove('hidden');
+                tip.textContent = "Use tools to mark changes.";
+            }
+            canvas.requestRenderAll();
+        }
+
+        function setAnnotateTool(tool) {
+            currentTool = tool;
+            
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            const btn = document.getElementById('tool-' + tool);
+            if (btn) btn.classList.add('active');
+
+            if (tool === 'pan') {
+                canvas.isDrawingMode = false;
+                canvas.discardActiveObject();
+                canvas.forEachObject(o => o.selectable = false);
+            } else if (tool === 'poly') {
+                canvas.isDrawingMode = false;
+                canvas.discardActiveObject();
+                canvas.forEachObject(o => o.selectable = false);
+                // Don't reset points here to allow resuming? No, better reset to avoid ghosts.
+                polyPoints = [];
+            }
+        }
+
+        // --- ADJUSTMENT LOGIC ---
+        function toggleOpacity() {
+            const overlayObj = canvas.getObjects().find(o => o.id === 'overlay_img');
+            if (overlayObj) {
+                const current = overlayObj.opacity;
+                // If basically visible, hide it. If hidden/semi, show full.
+                const newVal = current > 0.05 ? 0 : 1;
+                
+                // Update UI (Slider calls updateOpacity which handles logic)
+                const slider = document.getElementById('opacitySlider');
+                if (slider) {
+                    slider.value = newVal;
+                    updateOpacity(newVal); 
+                }
+            }
+        }
+
+        function updateOpacity(val) {
+            const floatVal = parseFloat(val);
+            document.getElementById('opacityValue').textContent = Math.round(floatVal * 100) + '%';
+            
+            // Switch UI Logic
+            const btn = document.getElementById('opacityToggleBtn');
+            const knob = document.getElementById('opacityToggleKnob');
+            if (btn && knob) {
+                if (floatVal > 0) {
+                    btn.classList.remove('bg-neutral-600');
+                    btn.classList.add('bg-blue-600');
+                    knob.classList.add('translate-x-4');
+                } else {
+                    btn.classList.remove('bg-blue-600');
+                    btn.classList.add('bg-neutral-600');
+                    knob.classList.remove('translate-x-4');
+                }
+            }
+
+            const overlayObj = canvas.getObjects().find(o => o.id === 'overlay_img');
+            if (overlayObj) {
+                overlayObj.set('opacity', floatVal);
+                canvas.requestRenderAll();
+            }
+        }
+
+        function updateRotation(val) {
+            document.getElementById('rotationValue').textContent = parseFloat(val).toFixed(1) + '°';
+            const overlayObj = canvas.getObjects().find(o => o.id === 'overlay_img');
+            if (overlayObj) {
+                overlayObj.rotate(parseFloat(val));
+                canvas.requestRenderAll();
+            }
+        }
+
+        async function downloadCanvas() {
+            if (!canvas || !baseImgWidth || !baseImgHeight) return;
+
+            let suggestedFileName = 'mask.png';
+            if (baseFileName) {
+                const nameWithoutExt = baseFileName.substring(0, baseFileName.lastIndexOf('.')) || baseFileName;
+                if (nameWithoutExt.toUpperCase().startsWith('BEFORE_')) {
+                    const suffix = nameWithoutExt.substring(7);
+                    suggestedFileName = `MASK_${suffix}.png`;
+                } else {
+                    suggestedFileName = `MASK_${nameWithoutExt}.png`;
+                }
+            }
+
+            const originalWidth = canvas.width;
+            const originalHeight = canvas.height;
+            const originalVpt = canvas.viewportTransform;
+            
+            canvas.setDimensions({ width: baseImgWidth, height: baseImgHeight });
+            canvas.setViewportTransform([1, 0, 0, 1, 0, 0]); 
+
+            const baseObj = canvas.getObjects().find(o => o.id === 'base_img');
+            const overlayObj = canvas.getObjects().find(o => o.id === 'overlay_img');
+            const originalBaseVisible = baseObj ? baseObj.visible : true;
+            const originalOverlayVisible = overlayObj ? overlayObj.visible : true;
+            const annotationStates = [];
+
+            canvas.forEachObject(obj => {
+                if (obj.id !== 'base_img' && obj.id !== 'overlay_img') {
+                    annotationStates.push({
+                        obj: obj,
+                        originalFill: obj.fill,
+                        originalStroke: obj.stroke
+                    });
+                    obj.set('fill', '#000000');
+                    obj.set('stroke', '#000000');
+                }
+            });
+            if (baseObj) baseObj.set('visible', false);
+            if (overlayObj) overlayObj.set('visible', false);
+            canvas.backgroundColor = '#ffffff';
+            
+            canvas.renderAll();
+
+            const dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
+            const blob = await (await fetch(dataURL)).blob();
+
+            if (baseObj) baseObj.set('visible', originalBaseVisible);
+            if (overlayObj) overlayObj.set('visible', originalOverlayVisible);
+            annotationStates.forEach(state => {
+                state.obj.set('fill', state.originalFill);
+                state.obj.set('stroke', state.originalStroke);
+            });
+            canvas.backgroundColor = '#1a1a1a'; 
+            
+            canvas.setDimensions({ width: originalWidth, height: originalHeight });
+            canvas.setViewportTransform(originalVpt);
+            canvas.requestRenderAll();
+
+            if (window.showSaveFilePicker) {
+                try {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: suggestedFileName,
+                        types: [{ description: 'PNG Image', accept: { 'image/png': ['.png'] } }],
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    return; 
+                } catch (err) {
+                    if (err.name === 'AbortError') return;
+                }
+            }
+
+            let fileName = prompt("Enter file name to save:", suggestedFileName);
+            if (!fileName) return;
+            if (!fileName.toLowerCase().endsWith('.png')) fileName += '.png';
+            
+            const link = document.createElement('a');
+            link.download = fileName;
+            link.href = dataURL;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function updateUploadUI(type, uploaded) {
+            if (uploaded) {
+                const dropzone = document.getElementById(type + 'Dropzone');
+                const icon = document.getElementById(type + 'Icon');
+                const text = document.getElementById(type + 'Text');
+                const colorClass = type === 'base' ? 'green' : 'blue';
+                
+                dropzone.className = `border-2 border-dashed rounded-lg p-3 flex items-center gap-3 transition-colors border-${colorClass}-500/50 bg-${colorClass}-500/10`;
+                icon.className = `p-2 rounded-md bg-${colorClass}-500 text-white`;
+                text.textContent = type === 'base' ? 'Base Image Loaded' : 'Overlay Image Loaded';
+            }
+        }
+    </script>
+</body>
+</html>
