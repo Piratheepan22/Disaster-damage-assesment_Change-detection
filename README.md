@@ -1,6 +1,28 @@
 # AI-Powered Satellite Change Detection 🌍🛰️
 
-Developed as a final-year engineering project, it leverages **Vision Transformers (ViT)** and **Remote Sensing** data to map flood and landslide impacts in Sri Lanka using bi-temporal Sentinel-2 imagery.
+## 🌍 Introduction
+
+Natural disasters, particularly floods and landslides, pose a significant threat to infrastructure and human life in Sri Lanka. Rapid response depends on **timely and accurate damage assessment**. However, traditional ground-based surveys are slow, and manual analysis of satellite imagery is labor-intensive and prone to human error.
+
+**DisasterVision Pro** addresses this challenge by providing an automated, end-to-end pipeline for satellite-based change detection. The project leverages a **Hybrid Deep Learning** approach to transform raw Sentinel-2 satellite data into actionable disaster maps.
+
+### 🧠 The Core Innovation: Hybrid ViT-CNN
+At the heart of this project is a specialized neural network architecture designed to solve the limitations of traditional computer vision:
+
+* **Vision Transformer (ViT) Encoder:** We utilize a **ViT-Base** backbone to capture **global spatial dependencies**. Unlike standard CNNs that look at local clusters of pixels, the ViT uses a **Self-Attention** mechanism to understand the entire landscape context. This is crucial for identifying large-scale flood patterns where distant geographical features influence local change detection.
+* **CNN-Based Decoder:** While Transformers are excellent at understanding *context*, they naturally process images in "patches" (e.g., 16x16 pixels), which can result in blocky output masks. To solve this, I engineered a custom **CNN Decoder**. It takes the high-level features from the ViT and performs **Transposed Convolutions** and **Upsampling** to recover fine-grained spatial details, ensuring the final damage masks are sharp and pixel-perfect.
+
+
+
+### 🛰️ Multi-Spectral Early Fusion
+To detect changes over time, the system implements an **Early Fusion** strategy. Pre-disaster and post-disaster RGB imagery are concatenated into a **6-channel input volume**. This allows the model's initial attention layers to learn the mathematical relationship between the two time periods directly, significantly improving sensitivity to sudden environmental shifts like rising water levels or soil displacement.
+
+### 🌐 Beyond the Model: Full-Stack Web Deployment
+Recognizing that an AI model is only useful if it is accessible to responders, this project includes a fully integrated **Web GIS Dashboard**:
+
+* **Live Data Pipeline:** Integrated with the **Google Earth Engine (GEE) API** to fetch real-time Sentinel-2 MSI data on demand, handling cloud-masking and normalization automatically.
+* **Web GIS Interface:** A professional dashboard built with **Flask** and **Leaflet.js**, providing an interactive map where users can toggle between bi-temporal imagery and AI-generated damage overlays.
+* **Custom Annotation Tool:** To solve the data bottleneck in the South Asian region, I developed a **bespoke annotation UI**. This tool allowed for the curation of a high-fidelity dataset of 400+ disaster scenes, ensuring the model is grounded in local Sri Lankan geography.
 
 ---
 
@@ -41,30 +63,6 @@ While the ViT is excellent at understanding *what* changed, it processes images 
 
 ---
 
-## 📂 Project Structure
-```text
-DisasterVisionPro/
-├── src/                   # AI Core
-│   ├── model.py           # Hybrid ViT + CNN Decoder architecture
-│   ├── dataset.py         # 6-channel fusion & Data loading logic
-│   ├── train.py           # Training pipeline with validation
-│   └── evaluate.py        # Metrics: IoU, F1-Score, Confusion Matrix
-├── web/                   # Web Application
-│   ├── app.py             # Flask API & Model Inference
-│   ├── static/            # Map logic (Leaflet.js) & UI Styling
-│   └── templates/         # Dashboard (index.html)
-├── outputs/               # Research Artifacts
-│   ├── reports/           # Loss curves & Confusion matrices
-│   └── models/            # .pth Model weights (ignored by git)
-├── data/                  # Dataset Directory
-│   ├── raw/               # Original Sentinel-2 scenes (GEE exports)
-│   ├── processed/         # Preprocessed 6-channel tensors
-│   └── annotations/       # Ground truth labels & masks
-├── requirements.txt       # Python dependencies
-├── .gitignore             # Git ignore file
-└── README.md              # Project Documentation
-```
-
 ## 📊 Dataset Information
 
 ### Data Source
@@ -72,19 +70,6 @@ DisasterVisionPro/
 - **Temporal Coverage:** 2020-2024
 - **Spatial Resolution:** 10m per pixel
 - **Spectral Bands:** RGB (B4, B3, B2) + NIR (B8) for pre/post-disaster pairs
-
-### Dataset Structure
-```
-data/
-├── raw/
-│   ├── pre_disaster/      # Before event satellite images
-│   └── post_disaster/     # After event satellite images
-├── processed/
-│   └── train_val_test/    # 6-channel fused tensors
-└── annotations/
-    ├── flood_masks/       # Binary flood damage masks
-    └── landslide_masks/   # Binary landslide damage masks
-```
 
 ### Dataset Access
 - Custom annotation tool available in `https://piratheepan22.github.io/Dataset-Annotation/`
