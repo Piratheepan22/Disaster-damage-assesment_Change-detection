@@ -65,59 +65,6 @@ DisasterVisionPro/
 └── README.md              # Project Documentation
 ```
 
----
-
-## 📋 Installation & Setup
-
-### Prerequisites
-- Python 3.9+
-- CUDA 11.8+ (for GPU acceleration)
-- Git
-
-### Step 1: Clone the Repository
-```bash
-git clone https://github.com/Piratheepan22/Disaster-damage-assesment_Change-detection.git
-cd Disaster-damage-assesment_Change-detection
-```
-
-### Step 2: Create Virtual Environment
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-### Step 3: Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### Step 4: Set Up Google Earth Engine API (Optional for data export)
-```bash
-earthengine authenticate
-```
-
----
-
-## 🚀 Quick Start
-
-### Training the Model
-```bash
-python src/train.py --epochs 50 --batch_size 32 --learning_rate 0.001
-```
-
-### Running Inference
-```bash
-python src/evaluate.py --model_path outputs/models/best_model.pth --test_image path/to/image.tif
-```
-
-### Starting the Web Dashboard
-```bash
-python web/app.py
-# Access at http://localhost:5000
-```
-
----
-
 ## 📊 Dataset Information
 
 ### Data Source
@@ -140,48 +87,8 @@ data/
 ```
 
 ### Dataset Access
-- Custom annotation tool available in `data/annotation_tool/`
+- Custom annotation tool available in `https://piratheepan22.github.io/Dataset-Annotation/`
 - Currently curating 400+ bi-temporal scenes (active development phase)
-
----
-
-## 📝 Usage Guide
-
-### 1. Data Preparation
-```bash
-# Place raw GEE exports in data/raw/
-# Run preprocessing pipeline
-python src/dataset.py --input data/raw/ --output data/processed/
-```
-
-### 2. Model Training
-Edit `src/train.py` to configure:
-- Batch size
-- Learning rate
-- Number of epochs
-- Model checkpoint intervals
-
-### 3. Inference & Visualization
-```bash
-# Generate change detection map
-python src/evaluate.py --model outputs/models/checkpoint.pth --input data/processed/test/
-```
-
----
-
-## 🔬 Model Architecture Details
-
-**Input:** 6-channel tensor (B, 6, H, W)
-- Channels 0-2: Pre-disaster RGB
-- Channels 3-5: Post-disaster RGB
-
-**Processing Pipeline:**
-1. ViT-Base patch embedding (16×16 patches)
-2. Transformer encoder with self-attention
-3. CNN decoder for upsampling
-4. Binary segmentation head (changed/unchanged)
-
-**Output:** Change detection map (B, 1, H, W)
 
 ---
 
@@ -195,18 +102,17 @@ python src/evaluate.py --model outputs/models/checkpoint.pth --input data/proces
 - [x] Flask API backend structure
 
 ### 🚧 In Progress
-- [ ] Full model training on 400+ dataset
-- [ ] Hyperparameter tuning & optimization
 - [ ] Web GIS dashboard frontend refinement
-- [ ] Model evaluation & validation metrics
-- [ ] Performance benchmarking
+- [ ] Dataset creation
+- [ ] annotation of binay masks for collected images
 
 ### 📅 Upcoming
+- [ ] Full model training on 400+ dataset
+- [ ] Model evaluation & validation metrics
+- [ ] Hyperparameter tuning & optimization
 - [ ] Real-time inference deployment
 - [ ] Advanced visualization features
-- [ ] API documentation & tutorials
-- [ ] Docker containerization
-- [ ] Model versioning & experiment tracking
+- [ ] documentation & report
 
 ---
 
@@ -215,10 +121,6 @@ python src/evaluate.py --model outputs/models/checkpoint.pth --input data/proces
 **Project Lead:** Piratheepan22
 - GitHub: [@Piratheepan22](https://github.com/Piratheepan22)
 - Project Repository: [Disaster-damage-assesment_Change-detection](https://github.com/Piratheepan22/Disaster-damage-assesment_Change-detection)
-
-**Final Year Project**
-- Institution: *[University Name]*
-- Supervisor: *[Supervisor Name]*
 
 ---
 
