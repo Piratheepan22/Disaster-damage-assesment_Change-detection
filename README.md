@@ -4,7 +4,7 @@
 
 Natural disasters, particularly floods and landslides, pose a significant threat to infrastructure and human life in Sri Lanka. Rapid response depends on **timely and accurate damage assessment**. However, traditional ground-based surveys are slow, and manual analysis of satellite imagery is labor-intensive and prone to human error.
 
-**DisasterVision Pro** addresses this challenge by providing an automated, end-to-end pipeline for satellite-based change detection. The project leverages a **Hybrid Deep Learning** approach to transform raw Sentinel-2 satellite data into actionable disaster maps.
+Our project addresses this challenge by providing an automated, end-to-end pipeline for satellite-based change detection. The project leverages a **Hybrid Deep Learning** approach to transform raw Sentinel-2 satellite data into actionable disaster maps.
 
 ### 🧠 The Core Innovation: Hybrid ViT-CNN
 At the heart of this project is a specialized neural network architecture designed to solve the limitations of traditional computer vision:
